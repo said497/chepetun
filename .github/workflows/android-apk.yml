@@ -1,31 +1,52 @@
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-}
 
-android {
-    namespace = "com.chepetun.app"
-    compileSdk = 35
+name: Construir APK de ChepeTun
 
-    defaultConfig {
-        applicationId = "com.chepetun.app"
-        minSdk = 23
-        targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
-    }
+on:
+  workflow_dispatch:
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+permissions:
+  contents: read
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-}
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-dependencies {
-    implementation("com.github.mwiede:jsch:0.2.20")
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-}
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Aceptar licencias Android
+        run: yes | sdkmanager --licenses || true
+
+      - name: Instalar herramientas Android
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Descomprimir proyecto
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          mkdir source
+          unzip -q ChepeTun-descarga.zip -d source
+
+      - name: Compilar APK
+        run: gradle -p source --no-daemon assembleDebug
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChepeTun-debug-apk
+          path: source/app/build/outputs/apk/debug/app-debug.apk
