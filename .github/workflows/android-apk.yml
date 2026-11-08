@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ANDROID_HOME: /home/runner/android-sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
 
     steps:
       - name: Descargar proyecto
