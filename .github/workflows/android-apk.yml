@@ -21,64 +21,36 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Preparar Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
       - name: Instalar herramientas Android
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip curl
           mkdir -p "$ANDROID_HOME/cmdline-tools"
-          curl -L https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$RUNNER_TEMP/android-tools.zip"
-          mkdir -p "$RUNNER_TEMP/android-tools"
-          unzip -q "$RUNNER_TEMP/android-tools.zip" -d "$RUNNER_TEMP/android-tools"
+          curl -L https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/android-tools.zip
+          mkdir -p /tmp/android-tools
+          unzip -q /tmp/android-tools.zip -d /tmp/android-tools
           mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
-          mv "$RUNNER_TEMP/android-tools/cmdline-tools/"* "$ANDROID_HOME/cmdline-tools/latest/"
+          mv /tmp/android-tools/cmdline-tools/* "$ANDROID_HOME/cmdline-tools/latest/"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
 
       - name: Aceptar licencias Android
-        run: |
-          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses || true
+        run: yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses || true
 
       - name: Instalar SDK Android 35
         run: |
           sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Preparar Gradle
+        run: |
+          curl -L https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
+
       - name: Descomprimir proyecto
         run: |
           mkdir -p source
           unzip -q ChepeTun-descarga.zip -d source
-
-      - name: Alinear Java y Kotlin
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("source/app/build.gradle.kts")
-          s = p.read_text()
-
-          if "compileOptions {" not in s:
-              s = s.replace(
-                  "    defaultConfig {",
-                  """    compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-
-              defaultConfig {""",
-                  1
-              )
-
-          p.write_text(s)
-          print("Configuración Java y Kotlin actualizada")
-          PY
 
       - name: Compilar APK
         run: |
