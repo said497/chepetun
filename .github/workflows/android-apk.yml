@@ -51,7 +51,32 @@ jobs:
         run: |
           mkdir -p source
           unzip -q ChepeTun-descarga.zip -d source
+        - name: Alinear Java y Kotlin
+          run: |
+            python3 - <<'PY'
+            from pathlib import Path
+            p = Path("source/app/build.gradle.kts")
+            s = p.read_text()
+            if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
+                i = s.index("\ndependencies {")
+                j = s.rfind("\n}", 0, i)
+                s = s[:j] + """
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            """ + s[j:]
+            if 'jvmTarget = "17"' not in s:
+                s += '''
 
+            tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+                kotlinOptions {
+                    jvmTarget = "17"
+                }
+            }
+            '''
+            p.write_text(s)
+            PY
       - name: Compilar APK
         run: |
           gradle -p source --no-daemon assembleDebug
