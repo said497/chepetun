@@ -1,4 +1,5 @@
-name: Construir APK de ChepeTun
+
+name: Build ChepeTun APK
 
 on:
   workflow_dispatch:
@@ -9,9 +10,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
 
     steps:
       - name: Descargar proyecto
@@ -34,8 +32,10 @@ jobs:
           sudo apt-get install -y unzip curl
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           curl -L https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$RUNNER_TEMP/android-tools.zip"
-          unzip -q "$RUNNER_TEMP/android-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
-          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          mkdir -p "$RUNNER_TEMP/android-tools"
+          unzip -q "$RUNNER_TEMP/android-tools.zip" -d "$RUNNER_TEMP/android-tools"
+          mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
+          mv "$RUNNER_TEMP/android-tools/cmdline-tools/"* "$ANDROID_HOME/cmdline-tools/latest/"
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
 
@@ -51,32 +51,35 @@ jobs:
         run: |
           mkdir -p source
           unzip -q ChepeTun-descarga.zip -d source
-        - name: Alinear Java y Kotlin
-          run: |
-            python3 - <<'PY'
-            from pathlib import Path
-            p = Path("source/app/build.gradle.kts")
-            s = p.read_text()
-            if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
-                i = s.index("\ndependencies {")
-                j = s.rfind("\n}", 0, i)
-                s = s[:j] + """
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
-                }
-            """ + s[j:]
-            if 'jvmTarget = "17"' not in s:
-                s += '''
 
-            tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                kotlinOptions {
-                    jvmTarget = "17"
-                }
-            }
-            '''
-            p.write_text(s)
-            PY
+      - name: Alinear Java y Kotlin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("source/app/build.gradle.kts")
+          s = p.read_text()
+
+          if "compileOptions {" not in s:
+              s = s.replace(
+                  "    defaultConfig {",
+                  """    compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+              defaultConfig {""",
+                  1
+              )
+
+          p.write_text(s)
+          print("Configuración Java y Kotlin actualizada")
+          PY
+
       - name: Compilar APK
         run: |
           gradle -p source --no-daemon assembleDebug
