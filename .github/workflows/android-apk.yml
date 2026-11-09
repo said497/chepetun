@@ -53,6 +53,24 @@ jobs:
           mkdir -p source
           unzip -q ChepeTun-descarga.zip -d source
 
+      - name: Corregir compatibilidad Java y Kotlin
+        run: |
+          cat >> source/app/build.gradle.kts <<'EOF'
+
+          android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+          }
+
+          tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+
       - name: Compilar APK
         run: |
           gradle -p source --no-daemon assembleDebug
